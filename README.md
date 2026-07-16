@@ -5,7 +5,7 @@ A modern professional portfolio website for Dr. Ariful Rahman, built with React,
 ## Live Links
 
 - **Frontend:** https://drariful-cms.netlify.app/
-- **Backend API:** https://drariful-adminpannel-backend.vercel.app/api/health
+- **Backend API:** https://drariful-cms-backend.vercel.app/api/health
 
 ## Overview
 
@@ -102,7 +102,7 @@ npm start
 
 The backend API will be available at the production endpoint configured in the frontend:
 
-- **Production API:** https://drariful-adminpannel-backend.vercel.app/api
+- **Production API:** https://drariful-cms-backend.vercel.app/api
 
 ## Environment Variables
 
@@ -111,7 +111,7 @@ The backend API will be available at the production endpoint configured in the f
 Create a `.env` file in the project root:
 
 ```bash
-VITE_API_BASE_URL=https://drariful-adminpannel-backend.vercel.app/api
+VITE_API_BASE_URL=https://drariful-cms-backend.vercel.app/api
 ```
 
 ### Backend
@@ -177,7 +177,7 @@ dist
 
 ## API Endpoints
 
-All endpoints are prefixed with: `https://drariful-adminpannel-backend.vercel.app/api`
+All endpoints are prefixed with: `https://drariful-cms-backend.vercel.app/api`
 
 ### Authentication
 - `POST /login` - Admin login

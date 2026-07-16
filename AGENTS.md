@@ -26,7 +26,7 @@ No test, lint, or typecheck scripts exist.
 - **Auth**: Simple email/password (no JWT). Login stores `{ email, role: "admin" }` in `localStorage` under key `mockUser`. Auth state communicates via custom `window.dispatchEvent(new Event("auth-change"))`.
 - **API client**: `src/lib/cms.js` — thin `fetch` wrapper. Transforms `_id` → `id` automatically.
 - **ImgBB**: Hardcoded API key (`81d3a84c4355522a5772250fb757fe39`) in `src/lib/cms.js:111` for image uploads.
-- **Env**: `VITE_API_BASE_URL` (falls back to `https://drariful-adminpannel-backend.vercel.app/api`). See `.env.example`.
+- **Env**: `VITE_API_BASE_URL` (falls back to `https://drariful-cms-backend.vercel.app/api`). See `.env.example`.
 - **Import alias**: `@/` → `src/` (Vite resolve alias).
 
 ## Routing

@@ -7,7 +7,7 @@
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 
-  "https://drariful-adminpannel-backend.vercel.app/api"
+  "https://drariful-cms-backend.vercel.app/api"
 ).replace(/\/$/, "");
 
 /**
