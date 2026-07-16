@@ -105,6 +105,12 @@ export const addProject = (data) => apiRequest("/projects", { method: "POST", bo
 export const updateProject = (id, data) => apiRequest(`/projects/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteProject = (id) => apiRequest(`/projects/${id}`, { method: "DELETE" });
 
+// --- ADMIN CREDENTIALS ---
+export const getAdmins = async () => (await apiRequest("/admins")) || [];
+export const addAdmin = (data) => apiRequest("/admins", { method: "POST", body: JSON.stringify(data) });
+export const updateAdmin = (id, data) => apiRequest(`/admins/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const deleteAdmin = (id) => apiRequest(`/admins/${id}`, { method: "DELETE" });
+
 // --- IMAGE UPLOAD (ImgBB) ---
 export const uploadImageFile = async (file) => {
   const formData = new FormData();

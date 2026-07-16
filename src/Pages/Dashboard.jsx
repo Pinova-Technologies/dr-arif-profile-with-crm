@@ -4,6 +4,7 @@ import {
   getBlogs, addBlog, updateBlog, deleteBlog,
   getGallery, addGalleryItem, updateGalleryItem, deleteGalleryItem,
   getProjects, addProject, updateProject, deleteProject,
+  getAdmins, addAdmin, updateAdmin, deleteAdmin,
   uploadImageFile, logout, getCurrentUser 
 } from "../lib/cms";
 import { 
@@ -12,7 +13,8 @@ import {
   X, Upload, Loader2, Search, Bell, Menu, 
   ChevronRight, MoreVertical, CheckCircle2, AlertCircle,
   TrendingUp, Users, Calendar, ArrowUpRight, ArrowDownRight,
-  Settings, User, HelpCircle, Mail, Phone, MapPin
+  Settings, User, HelpCircle, Mail, Phone, MapPin,
+  Eye, EyeOff
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
@@ -32,6 +34,7 @@ export default function Dashboard() {
   const [blogs, setBlogs] = useState([]);
   const [galleryItems, setGalleryItems] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "System updated to Vault v2.0", time: "Just now", type: "info" },
     { id: 2, text: "Database sync successful", time: "2 mins ago", type: "success" }
@@ -42,6 +45,7 @@ export default function Dashboard() {
   const [modalType, setModalType] = useState("blog");
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [showDashboardPassword, setShowDashboardPassword] = useState(false);
   
   // --- DELETE CONFIRMATION STATE ---
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, type: null, id: null });
@@ -60,14 +64,16 @@ export default function Dashboard() {
   const loadAllData = async () => {
     try {
       setLoading(true);
-      const [dbBlogs, dbGallery, dbProjects] = await Promise.all([
+      const [dbBlogs, dbGallery, dbProjects, dbAdmins] = await Promise.all([
         getBlogs(),
         getGallery(),
-        getProjects()
+        getProjects(),
+        getAdmins()
       ]);
       setBlogs(dbBlogs || []);
       setGalleryItems(dbGallery || []);
       setProjects(dbProjects || []);
+      setAdmins(dbAdmins || []);
     } catch (err) {
       console.error("❌ Dashboard Data Sync Error:", err.message);
     } finally {
@@ -104,6 +110,7 @@ export default function Dashboard() {
     setModalType(type);
     setEditingItem(null);
     setFormData({});
+    setShowDashboardPassword(false);
     setIsModalOpen(true);
   };
 
@@ -111,6 +118,7 @@ export default function Dashboard() {
     setModalType(type);
     setEditingItem(item);
     setFormData({ ...item });
+    setShowDashboardPassword(false);
     setIsModalOpen(true);
   };
 
@@ -150,6 +158,17 @@ export default function Dashboard() {
         
         setGalleryItems(prev => editingItem ? prev.map(i => i.id === savedDoc.id ? savedDoc : i) : [savedDoc, ...prev]);
       }
+      else if (modalType === "admin") {
+        if (!formData.email || (!editingItem && !formData.password)) {
+          alert("⚠️ Email and Password are required!");
+          setIsSubmitting(false);
+          return;
+        }
+        savedDoc = editingItem 
+          ? await updateAdmin(editingItem.id, formData)
+          : await addAdmin(formData);
+        setAdmins(prev => editingItem ? prev.map(i => i.id === savedDoc.id ? savedDoc : i) : [...prev, savedDoc]);
+      }
 
       setIsModalOpen(false);
     } catch (err) {
@@ -178,6 +197,14 @@ export default function Dashboard() {
       } else if (type === "gallery") {
         await deleteGalleryItem(id);
         setGalleryItems(prev => prev.filter(i => i.id !== id));
+      } else if (type === "admin") {
+        if (admins.length <= 1) {
+          alert("⚠️ Cannot delete the only remaining admin account!");
+          setIsSubmitting(false);
+          return;
+        }
+        await deleteAdmin(id);
+        setAdmins(prev => prev.filter(i => i.id !== id));
       }
       setDeleteConfirm({ isOpen: false, type: null, id: null });
     } catch (err) {
@@ -282,7 +309,8 @@ export default function Dashboard() {
               { id: "overview", label: "Overview", icon: LayoutDashboard },
               { id: "blogs", label: "Blogs", icon: FileText },
               { id: "projects", label: "Research", icon: FolderPlus },
-              { id: "gallery", label: "Gallery", icon: ImageIcon }
+              { id: "gallery", label: "Gallery", icon: ImageIcon },
+              { id: "admins", label: "Admin Credentials", icon: Settings }
             ].map(item => (
               <button
                 key={item.id}
@@ -325,8 +353,8 @@ export default function Dashboard() {
               </p>
             </div>
             {activeTab !== "overview" && (
-              <Button onClick={() => openAddModal(activeTab === "blogs" ? "blog" : (activeTab === "projects" ? "project" : "gallery"))} className="bg-blue-900 hover:bg-blue-800 text-white rounded-2xl px-8 h-14 font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-900/20">
-                <Plus className="mr-2 w-5 h-5" /> New {activeTab}
+              <Button onClick={() => openAddModal(activeTab === "blogs" ? "blog" : (activeTab === "projects" ? "project" : (activeTab === "gallery" ? "gallery" : "admin")))} className="bg-blue-900 hover:bg-blue-800 text-white rounded-2xl px-8 h-14 font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-900/20">
+                <Plus className="mr-2 w-5 h-5" /> New {activeTab === "admins" ? "Admin" : activeTab}
               </Button>
             )}
           </header>
@@ -498,6 +526,41 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+
+          {/* ADMINS CONTENT */}
+          {activeTab === "admins" && (
+            <div className="grid gap-6">
+              {admins.map(admin => (
+                <div key={admin.id} className="bg-white p-4 sm:p-6 rounded-[32px] border border-gray-50 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 bg-blue-50 text-blue-900 rounded-3xl"><User /></div>
+                    <div>
+                      <h3 className="text-lg font-black text-gray-900">{admin.email}</h3>
+                      <p className="text-gray-400 text-xs font-medium mt-1">Role: Administrator</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => openEditModal("admin", admin)} 
+                      className="h-12 rounded-xl hover:bg-blue-50 text-blue-600 font-bold text-sm"
+                    >
+                      <Edit className="w-4 h-4 mr-2" /> Edit
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => handleDelete("admin", admin.id)} 
+                      className="h-12 rounded-xl hover:bg-red-50 text-red-500 font-bold text-sm"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" /> Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {admins.length === 0 && <p className="text-center py-20 text-gray-400 italic">No admin credentials found in vault.</p>}
+            </div>
+          )}
         </main>
       </div>
 
@@ -513,70 +576,110 @@ export default function Dashboard() {
           
           <form onSubmit={handleSave} className="p-10 space-y-6 max-h-[70vh] overflow-y-auto">
             <div className="grid gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Title / Caption</label>
-                <input 
-                  name={modalType === "gallery" ? "caption" : "title"}
-                  value={modalType === "gallery" ? formData.caption || '' : formData.title || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-900 font-bold"
-                  required
-                />
-              </div>
-
-              {modalType === "blog" && (
-                <div className="grid grid-cols-2 gap-6">
+              {modalType === "admin" ? (
+                <>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Category</label>
-                    <input name="category" value={formData.category || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Email Address</label>
+                    <input 
+                      type="email"
+                      name="email"
+                      value={formData.email || ''}
+                      onChange={handleInputChange}
+                      className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-900 font-bold"
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Author</label>
-                    <input name="author" value={formData.author || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                      {editingItem ? "New Password (leave blank to keep current)" : "Password"}
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type={showDashboardPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password || ''}
+                        onChange={handleInputChange}
+                        className="w-full pl-6 pr-14 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-900 font-bold"
+                        required={!editingItem}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowDashboardPassword(!showDashboardPassword)}
+                        className="absolute inset-y-0 right-0 pr-6 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                      >
+                        {showDashboardPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {modalType === "project" && (
-                <div className="grid grid-cols-2 gap-6">
+                </>
+              ) : (
+                <>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Status</label>
-                    <input name="status" value={formData.status || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Title / Caption</label>
+                    <input 
+                      name={modalType === "gallery" ? "caption" : "title"}
+                      value={modalType === "gallery" ? formData.caption || '' : formData.title || ''}
+                      onChange={handleInputChange}
+                      className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-900 font-bold"
+                      required
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Year</label>
-                    <input name="year" value={formData.year || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+
+                  {modalType === "blog" && (
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Category</label>
+                        <input name="category" value={formData.category || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Author</label>
+                        <input name="author" value={formData.author || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+                      </div>
+                    </div>
+                  )}
+
+                  {modalType === "project" && (
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Status</label>
+                        <input name="status" value={formData.status || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Year</label>
+                        <input name="year" value={formData.year || ''} onChange={handleInputChange} className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold" />
+                      </div>
+                    </div>
+                  )}
+
+                  {modalType !== "gallery" && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Description Content</label>
+                      <textarea 
+                        name={modalType === "blog" ? "content" : "description"} 
+                        rows="5" 
+                        value={modalType === "blog" ? formData.content || '' : formData.description || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold"
+                      />
+                    </div>
+                  )}
+
+                  <div className="p-8 border-4 border-dashed border-gray-100 rounded-[32px] bg-gray-50 flex flex-col items-center gap-4">
+                    {(formData.src || formData.coverImage || formData.imageUrl) ? (
+                      <img src={formData.src || formData.coverImage || formData.imageUrl} className="h-40 rounded-3xl shadow-xl" alt="" />
+                    ) : (
+                      <Upload className="w-10 h-10 text-gray-300" />
+                    )}
+                    <input type="file" onChange={handleFileUpload} className="text-xs font-bold text-gray-400 file:bg-blue-900 file:text-white file:px-6 file:py-2 file:rounded-full file:border-none file:mr-4 cursor-pointer" />
                   </div>
-                </div>
-              )}
 
-              {modalType !== "gallery" && (
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Description Content</label>
-                  <textarea 
-                    name={modalType === "blog" ? "content" : "description"} 
-                    rows="5" 
-                    value={modalType === "blog" ? formData.content || '' : formData.description || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold"
-                  />
-                </div>
-              )}
-
-              <div className="p-8 border-4 border-dashed border-gray-100 rounded-[32px] bg-gray-50 flex flex-col items-center gap-4">
-                {(formData.src || formData.coverImage || formData.imageUrl) ? (
-                  <img src={formData.src || formData.coverImage || formData.imageUrl} className="h-40 rounded-3xl shadow-xl" alt="" />
-                ) : (
-                  <Upload className="w-10 h-10 text-gray-300" />
-                )}
-                <input type="file" onChange={handleFileUpload} className="text-xs font-bold text-gray-400 file:bg-blue-900 file:text-white file:px-6 file:py-2 file:rounded-full file:border-none file:mr-4 cursor-pointer" />
-              </div>
-
-              {modalType === "project" && (
-                <label className="flex items-center gap-4 p-6 bg-blue-50 rounded-[24px] cursor-pointer">
-                  <input type="checkbox" name="featured" checked={formData.featured || false} onChange={handleInputChange} className="w-6 h-6 rounded-lg text-blue-900" />
-                  <span className="font-black text-xs uppercase text-blue-900 tracking-widest">Feature on Home Page</span>
-                </label>
+                  {modalType === "project" && (
+                    <label className="flex items-center gap-4 p-6 bg-blue-50 rounded-[24px] cursor-pointer">
+                      <input type="checkbox" name="featured" checked={formData.featured || false} onChange={handleInputChange} className="w-6 h-6 rounded-lg text-blue-900" />
+                      <span className="font-black text-xs uppercase text-blue-900 tracking-widest">Feature on Home Page</span>
+                    </label>
+                  )}
+                </>
               )}
             </div>
 
