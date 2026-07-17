@@ -19,25 +19,27 @@ const GalleryPage = () => {
 useEffect(() => {
     window.scrollTo(0, 0);
     
+    // retryCount দিয়ে আমরা ট্র্যাক করব সে কতবার ট্রাই করেছে
     const fetchItems = async (retryCount = 0) => {
       try {
-        if(retryCount === 0) setLoading(true);
-        const data = await getGallery();
+        if (retryCount === 0) setLoading(true); // প্রথমবার লোডিং দেখাবে
         
-        if ((!data || data.length === 0) && retryCount === 0) {
-          console.log('🔄 Data seems empty, retrying to bypass cache/cold start...');
-          setTimeout(() => fetchItems(1), 1500); 
-          return;
-        }
-
+        const data = await getGallery();
         setItems(data || []);
+        setLoading(false); // ডাটা পেয়ে গেলে লোডিং বন্ধ
+        
       } catch (error) {
-        console.error("❌ Gallery Fetch Error:", error);
-        if (retryCount === 0) {
-          setTimeout(() => fetchItems(1), 1500);
+        console.error(`❌ Gallery Fetch Error (Attempt ${retryCount + 1}):`, error);
+        
+        // যদি এরর খায় (সার্ভার ঘুম থেকে উঠতে দেরি হওয়ার কারণে), সে হাল ছাড়বে না!
+        if (retryCount < 3) {
+          console.log("⏳ Vercel Server is waking up... Retrying silently...");
+          // ২.৫ সেকেন্ড পর আড়ালে নিজে নিজেই আবার কল করবে
+          setTimeout(() => fetchItems(retryCount + 1), 2500);
+        } else {
+          // ৩ বার ট্রাই করার পরও না পেলে তখন লোডিং বন্ধ করবে
+          setLoading(false); 
         }
-      } finally {
-        setLoading(false);
       }
     };
 
