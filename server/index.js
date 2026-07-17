@@ -21,16 +21,33 @@ app.use(express.json({ limit: "20mb" }));
 
 // --- DATABASE CONNECTION ---
 const connectDB = async () => {
-  if (mongoose.connection.readyState >= 1) return;
+  const state = mongoose.connection.readyState;
+
+  // ১. কানেক্টেড থাকলে পিং করে চেক করবে
+  if (state === 1) {
+    try {
+      await mongoose.connection.db.admin().ping();
+      return; 
+    } catch (err) {
+      console.log("⚠️ Stale connection detected, reconnecting...");
+      await mongoose.disconnect();
+    }
+  } 
+  // ২. যদি আগে থেকেই কানেক্ট হওয়ার প্রসেসে থাকে, তবে নতুন রিকোয়েস্ট পাঠাবে না (Mongoose Queue ব্যবহার করবে)
+  else if (state === 2) {
+    console.log("⏳ DB is currently connecting, queuing request...");
+    return; 
+  }
   
+  // ৩. নতুন করে কানেক্ট করবে
   try {
     await mongoose.connect(MONGO_URI, {
       serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
       maxPoolSize: 10,
     });
     console.log("✅ Connected to Client Database");
 
-    // Auto-seed admin account if database is empty
     const AdminModel = mongoose.models.Admin;
     if (AdminModel) {
       const adminCount = await AdminModel.countDocuments();
@@ -51,6 +68,10 @@ const connectDB = async () => {
     throw err;
   }
 };
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected automatically');
+});
 
 // --- MODELS ---
 const commonOptions = { timestamps: true, versionKey: false };

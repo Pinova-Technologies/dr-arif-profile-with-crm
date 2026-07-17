@@ -16,19 +16,31 @@ const GalleryPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  useEffect(() => {
+useEffect(() => {
     window.scrollTo(0, 0);
-    const fetchItems = async () => {
+    
+    const fetchItems = async (retryCount = 0) => {
       try {
-        setLoading(true);
+        if(retryCount === 0) setLoading(true);
         const data = await getGallery();
+        
+        if ((!data || data.length === 0) && retryCount === 0) {
+          console.log('🔄 Data seems empty, retrying to bypass cache/cold start...');
+          setTimeout(() => fetchItems(1), 1500); 
+          return;
+        }
+
         setItems(data || []);
       } catch (error) {
         console.error("❌ Gallery Fetch Error:", error);
+        if (retryCount === 0) {
+          setTimeout(() => fetchItems(1), 1500);
+        }
       } finally {
         setLoading(false);
       }
     };
+
     fetchItems();
   }, []);
 
