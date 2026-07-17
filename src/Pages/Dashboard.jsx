@@ -64,16 +64,16 @@ export default function Dashboard() {
   const loadAllData = async () => {
     try {
       setLoading(true);
-      const [dbBlogs, dbGallery, dbProjects, dbAdmins] = await Promise.all([
+      const results = await Promise.allSettled([
         getBlogs(),
         getGallery(),
         getProjects(),
         getAdmins()
       ]);
-      setBlogs(dbBlogs || []);
-      setGalleryItems(dbGallery || []);
-      setProjects(dbProjects || []);
-      setAdmins(dbAdmins || []);
+      setBlogs(results[0].status === "fulfilled" ? results[0].value || [] : []);
+      setGalleryItems(results[1].status === "fulfilled" ? results[1].value || [] : []);
+      setProjects(results[2].status === "fulfilled" ? results[2].value || [] : []);
+      setAdmins(results[3].status === "fulfilled" ? results[3].value || [] : []);
     } catch (err) {
       console.error("❌ Dashboard Data Sync Error:", err.message);
     } finally {
