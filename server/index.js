@@ -250,8 +250,6 @@ app.delete("/api/blogs/:id", asyncHandler(async (req, res) => {
 
 // GALLERY CRUD
 app.get("/api/gallery", asyncHandler(async (req, res) => {
-  // Cache for 60 seconds, serve stale while revalidating
-  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
   await connectDB();
   const data = await Gallery.find().sort({ createdAt: -1 }).lean();
   res.json(data.map(d => ({ ...d, id: d._id.toString() })));
