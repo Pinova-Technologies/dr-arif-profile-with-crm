@@ -20,34 +20,41 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "20mb" }));
 
 // --- DATABASE CONNECTION ---
+// Vercel Serverless-এর জন্য Global Connection Caching (Ultimate Standard)
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-  const state = mongoose.connection.readyState;
-
-  // ১. কানেক্টেড থাকলে পিং করে চেক করবে
-  if (state === 1) {
-    try {
-      await mongoose.connection.db.admin().ping();
-      return; 
-    } catch (err) {
-      console.log("⚠️ Stale connection detected, reconnecting...");
-      await mongoose.disconnect();
-    }
-  } 
-  // ২. যদি আগে থেকেই কানেক্ট হওয়ার প্রসেসে থাকে, তবে নতুন রিকোয়েস্ট পাঠাবে না (Mongoose Queue ব্যবহার করবে)
-  else if (state === 2) {
-    console.log("⏳ DB is currently connecting, queuing request...");
-    return; 
+  if (cached.conn) {
+    return cached.conn;
   }
-  
-  // ৩. নতুন করে কানেক্ট করবে
-  try {
-    await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      maxPoolSize: 10,
-    });
-    console.log("✅ Connected to Client Database");
 
+  if (!cached.promise) {
+    console.log("🔄 Initializing new database connection...");
+    
+    // Serverless-এর জন্য সবচেয়ে নিরাপদ সেটিংস
+    const opts = {
+      bufferCommands: false, // কানেকশন ড্রপ হলে হ্যাং করবে না, সাথে সাথে ফেইল করবে
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10,
+    };
+
+    cached.promise = mongoose.connect(MONGO_URI, opts).then((mongoose) => {
+      console.log("✅ Connected to Client Database");
+      return mongoose;
+    }).catch((err) => {
+      console.error("❌ DB Connection Error:", err.message);
+      cached.promise = null;
+      throw err;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+    
+    // Auto-seed admin account
     const AdminModel = mongoose.models.Admin;
     if (AdminModel) {
       const adminCount = await AdminModel.countDocuments();
@@ -63,15 +70,12 @@ const connectDB = async () => {
         console.log(`✅ Default admin account seeded: ${defaultEmail}`);
       }
     }
+    
+    return cached.conn;
   } catch (err) {
-    console.error("❌ DB Connection Error:", err.message);
     throw err;
   }
 };
-
-mongoose.connection.on('disconnected', () => {
-  console.warn('⚠️ MongoDB disconnected automatically');
-});
 
 // --- MODELS ---
 const commonOptions = { timestamps: true, versionKey: false };

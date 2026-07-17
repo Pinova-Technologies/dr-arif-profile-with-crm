@@ -28,7 +28,7 @@ const transform = (data) => {
 };
 
 /**
- * Universal API request handler
+ * Universal API request handler (With Anti-Hang Timeout)
  */
 const apiRequest = async (path, options = {}) => {
   const url = `${API_BASE_URL}${path}`;
@@ -38,9 +38,19 @@ const apiRequest = async (path, options = {}) => {
     ...(options.headers || {})
   };
 
+  // ৮ সেকেন্ডের বেশি সময় নিলে রিকোয়েস্ট ক্যানসেল করে দিবে (যাতে ইনফিনিট লোডিং না হয়)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   try {
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, { 
+      ...options, 
+      headers,
+      signal: controller.signal // Connect the timeout signal
+    });
     
+    clearTimeout(timeoutId); // ডাটা পেয়ে গেলে টাইমআউট ক্লিয়ার করবে
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.message || `Error: ${response.status}`);
@@ -50,10 +60,19 @@ const apiRequest = async (path, options = {}) => {
     const result = await response.json();
     return transform(result);
   } catch (err) {
+    clearTimeout(timeoutId);
+    
+    if (err.name === 'AbortError') {
+      console.error(`❌ CMS Bridge Timeout [${path}]: Request took too long.`);
+      throw new Error("Server is waking up. Please retry.");
+    }
+    
     console.error(`❌ CMS Bridge Error [${path}]:`, err.message);
     throw err;
   }
 };
+
+
 
 // --- AUTHENTICATION ---
 export const login = async (email, password) => {
