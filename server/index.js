@@ -20,60 +20,32 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "20mb" }));
 
 // --- DATABASE CONNECTION ---
-// Vercel Serverless-এর জন্য Global Connection Caching (Ultimate Standard)
-let cached = global.mongoose;
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
+let isConnected = false; // কানেকশন স্ট্যাটাস চেক করার সিম্পল ভেরিয়েবল
 
 const connectDB = async () => {
-  if (cached.conn) {
-    return cached.conn;
+  if (isConnected) {
+    return;
   }
-
-  if (!cached.promise) {
-    console.log("🔄 Initializing new database connection...");
-    
-    // Serverless-এর জন্য সবচেয়ে নিরাপদ সেটিংস
-    const opts = {
-      bufferCommands: false, // কানেকশন ড্রপ হলে হ্যাং করবে না, সাথে সাথে ফেইল করবে
-      serverSelectionTimeoutMS: 5000,
-      maxPoolSize: 10,
-    };
-
-    cached.promise = mongoose.connect(MONGO_URI, opts).then((mongoose) => {
-      console.log("✅ Connected to Client Database");
-      return mongoose;
-    }).catch((err) => {
-      console.error("❌ DB Connection Error:", err.message);
-      cached.promise = null;
-      throw err;
-    });
-  }
-
+  
   try {
-    cached.conn = await cached.promise;
-    
+    const db = await mongoose.connect(MONGO_URI);
+    isConnected = db.connections[0].readyState === 1;
+    console.log("✅ Connected to Client Database");
+
     // Auto-seed admin account
     const AdminModel = mongoose.models.Admin;
     if (AdminModel) {
       const adminCount = await AdminModel.countDocuments();
       if (adminCount === 0) {
-        console.log("🌱 No admin accounts found. Seeding default admin...");
-        const defaultEmail = process.env.ADMIN_EMAIL || "admin@drariful.com";
-        const defaultPassword = process.env.ADMIN_PASSWORD || "adminpassword";
-        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+        const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || "adminpassword", 10);
         await AdminModel.create({
-          email: defaultEmail.toLowerCase(),
+          email: (process.env.ADMIN_EMAIL || "admin@drariful.com").toLowerCase(),
           password: hashedPassword
         });
-        console.log(`✅ Default admin account seeded: ${defaultEmail}`);
       }
     }
-    
-    return cached.conn;
   } catch (err) {
-    throw err;
+    console.error("❌ DB Connection Error:", err.message);
   }
 };
 

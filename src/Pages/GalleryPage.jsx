@@ -1,48 +1,35 @@
-/**
- * src/Pages/GalleryPage.jsx - THE PUBLIC VIEW (ULTIMATE VERSION)
- * 1. 100% Dynamic Database Fetch.
- * 2. Visual-first Loading State.
- * 3. Modern Masonry-style Grid with Safeguards.
- */
-
 import React, { useState, useEffect } from "react";
 import { getGallery } from "../lib/cms";
 import Nav from "../Header/Nav";
 import Footer from "../Footer/Footer";
-import { Loader2, ImageIcon, X } from "lucide-react";
+import { Loader2, ImageIcon, X, RefreshCw } from "lucide-react";
 
 const GalleryPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isError, setIsError] = useState(false); // নেটওয়ার্ক এরর ধরার জন্য
   const [selectedItem, setSelectedItem] = useState(null);
 
-useEffect(() => {
-    window.scrollTo(0, 0);
-    
-    // retryCount দিয়ে আমরা ট্র্যাক করব সে কতবার ট্রাই করেছে
-    const fetchItems = async (retryCount = 0) => {
-      try {
-        if (retryCount === 0) setLoading(true); // প্রথমবার লোডিং দেখাবে
-        
-        const data = await getGallery();
-        setItems(data || []);
-        setLoading(false); // ডাটা পেয়ে গেলে লোডিং বন্ধ
-        
-      } catch (error) {
-        console.error(`❌ Gallery Fetch Error (Attempt ${retryCount + 1}):`, error);
-        
-        // যদি এরর খায় (সার্ভার ঘুম থেকে উঠতে দেরি হওয়ার কারণে), সে হাল ছাড়বে না!
-        if (retryCount < 3) {
-          console.log("⏳ Vercel Server is waking up... Retrying silently...");
-          // ২.৫ সেকেন্ড পর আড়ালে নিজে নিজেই আবার কল করবে
-          setTimeout(() => fetchItems(retryCount + 1), 2500);
-        } else {
-          // ৩ বার ট্রাই করার পরও না পেলে তখন লোডিং বন্ধ করবে
-          setLoading(false); 
-        }
+  const fetchItems = async () => {
+    setLoading(true);
+    setIsError(false);
+    try {
+      const data = await getGallery();
+      if (Array.isArray(data)) {
+        setItems(data);
+      } else {
+        setItems([]);
       }
-    };
+    } catch (error) {
+      console.error("❌ Gallery Fetch Error:", error);
+      setIsError(true); // নেটওয়ার্ক এরর হলে এরর স্টেট ট্রু হবে (মিথ্যা 'No data' দেখাবে না)
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
     fetchItems();
   }, []);
 
@@ -62,12 +49,35 @@ useEffect(() => {
       </header>
 
       <main className="flex-grow max-w-7xl mx-auto px-4 py-16 w-full">
+        {/* ১. লোডিং স্টেট */}
         {loading ? (
           <div className="flex flex-col justify-center items-center h-96 gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-blue-700" />
-            <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.3em]">Processing Visuals...</p>
+            <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.3em]">
+              Processing Visuals...
+            </p>
+          </div>
+        ) : isError ? (
+          /* ২. নেটওয়ার্ক বা সার্ভার স্লিপ এরর স্টেট (যা এতদিন No Data Found দেখাচ্ছিল) */
+          <div className="text-center py-32">
+            <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
+              <RefreshCw className="w-10 h-10 text-red-500" />
+            </div>
+            <h3 className="text-2xl font-black text-gray-800">
+              Server is waking up or network issue.
+            </h3>
+            <p className="text-gray-400 mt-2 font-bold uppercase text-xs tracking-widest mb-6">
+              Please click below to reload visuals
+            </p>
+            <button
+              onClick={fetchItems}
+              className="bg-blue-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg"
+            >
+              Retry Loading
+            </button>
           </div>
         ) : items.length > 0 ? (
+          /* ৩. ডাটা পাওয়ার পর গ্যালারি গ্রিড */
           <>
             <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
               {items.map((item) => (
@@ -103,7 +113,6 @@ useEffect(() => {
                   className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto relative"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Close Button */}
                   <button
                     onClick={() => setSelectedItem(null)}
                     className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 hover:bg-gray-100 transition-colors"
@@ -111,14 +120,12 @@ useEffect(() => {
                     <X className="w-6 h-6 text-gray-900" />
                   </button>
 
-                  {/* Image */}
                   <img
                     src={selectedItem.src}
                     alt={selectedItem.alt || "Clinical Experience"}
                     className="w-full h-auto object-cover"
                   />
 
-                  {/* Caption */}
                   {selectedItem.caption && (
                     <div className="p-8 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
                       <h3 className="text-lg font-black text-blue-900 mb-3">Caption</h3>
@@ -132,12 +139,17 @@ useEffect(() => {
             )}
           </>
         ) : (
+          /* ৪. ডাটাবেসে সত্যিই কোনো ছবি না থাকলে কেবল এটি দেখাবে */
           <div className="text-center py-32">
             <div className="bg-blue-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
               <ImageIcon className="w-10 h-10 text-blue-200" />
             </div>
-            <h3 className="text-3xl font-black text-gray-800">Our gallery is currently empty.</h3>
-            <p className="text-gray-400 mt-4 font-bold uppercase text-xs tracking-widest">New Clinical captures coming soon</p>
+            <h3 className="text-3xl font-black text-gray-800">
+              Our gallery is currently empty.
+            </h3>
+            <p className="text-gray-400 mt-4 font-bold uppercase text-xs tracking-widest">
+              New Clinical captures coming soon
+            </p>
           </div>
         )}
       </main>
