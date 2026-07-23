@@ -20,16 +20,15 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "20mb" }));
 
 // --- DATABASE CONNECTION ---
-let isConnected = false; // কানেকশন স্ট্যাটাস চেক করার সিম্পল ভেরিয়েবল
-
 const connectDB = async () => {
-  if (isConnected) {
+  // Use Mongoose's built-in readyState instead of global variable
+  // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+  if (mongoose.connection.readyState === 1) {
     return;
   }
   
   try {
-    const db = await mongoose.connect(MONGO_URI);
-    isConnected = db.connections[0].readyState === 1;
+    await mongoose.connect(MONGO_URI);
     console.log("✅ Connected to Client Database");
 
     // Auto-seed admin account
@@ -46,6 +45,7 @@ const connectDB = async () => {
     }
   } catch (err) {
     console.error("❌ DB Connection Error:", err.message);
+    throw err; // Propagate error to frontend
   }
 };
 

@@ -1,8 +1,9 @@
 /**
- * src/lib/cms.js - THE SEAMLESS BRIDGE (ULTIMATE FINAL VERSION)
+ * src/lib/cms.js - THE SEAMLESS BRIDGE (ENHANCED VERSION WITH RETRY LOGIC)
  * 1. 100% Cache Free: No browser will show empty cached data.
  * 2. Proper Error Throwing: Tells the UI exactly if the server is sleeping.
- * 3. Keeps all your previous 129 lines logic intact.
+ * 3. Retry Logic: Automatically retries 3 times on failure to handle Vercel cold start.
+ * 4. Request Timeout: 15 seconds per attempt to prevent hanging.
  */
 
 const API_BASE_URL = (
@@ -28,7 +29,8 @@ const transform = (data) => {
 };
 
 /**
- * Universal API request handler (Clean, No-Cache, No-Loop)
+ * Universal API request handler with Retry Logic & Timeout
+ * Retry 3 times with exponential backoff (2s, 4s, 6s)
  */
 const apiRequest = async (path, options = {}) => {
   const url = `${API_BASE_URL}${path}`;
@@ -38,21 +40,53 @@ const apiRequest = async (path, options = {}) => {
     ...(options.headers || {})
   };
 
-  // cache: 'no-store' ensures the browser always fetches fresh data from backend
-  const response = await fetch(url, { 
-    ...options, 
-    headers,
-    cache: "no-store" 
-  });
+  let lastError;
+  const maxAttempts = 3;
   
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `HTTP Error: ${response.status}`);
-  }
+  // Retry loop: attempt up to 3 times
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`📤 Fetching ${path} (Attempt ${attempt}/${maxAttempts})...`);
+      
+      // cache: 'no-store' ensures the browser always fetches fresh data from backend
+      // signal: AbortSignal.timeout(15000) aborts after 15 seconds
+      const response = await fetch(url, { 
+        ...options, 
+        headers,
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000) // 15 second timeout
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `HTTP Error: ${response.status}`);
+      }
 
-  if (response.status === 204) return null;
-  const result = await response.json();
-  return transform(result);
+      if (response.status === 204) {
+        console.log(`✅ ${path} - No content`);
+        return null;
+      }
+      
+      const result = await response.json();
+      console.log(`✅ ${path} - Success on attempt ${attempt}`);
+      return transform(result);
+      
+    } catch (error) {
+      lastError = error;
+      console.warn(`⚠️ ${path} - Attempt ${attempt} failed:`, error.message);
+      
+      // If this is not the last attempt, wait and retry
+      if (attempt < maxAttempts) {
+        const waitTime = attempt * 2000; // 2s, 4s, 6s backoff
+        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+        await new Promise(r => setTimeout(r, waitTime));
+      }
+    }
+  }
+  
+  // All attempts failed
+  console.error(`❌ ${path} - Failed after ${maxAttempts} attempts`);
+  throw lastError;
 };
 
 // --- AUTHENTICATION ---

@@ -7,12 +7,12 @@ import { Loader2, ImageIcon, X, RefreshCw } from "lucide-react";
 const GalleryPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isError, setIsError] = useState(false); // নেটওয়ার্ক এরর ধরার জন্য
+  const [error, setError] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
 
   const fetchItems = async () => {
     setLoading(true);
-    setIsError(false);
+    setError(null);
     try {
       const data = await getGallery();
       if (Array.isArray(data)) {
@@ -20,9 +20,9 @@ const GalleryPage = () => {
       } else {
         setItems([]);
       }
-    } catch (error) {
-      console.error("❌ Gallery Fetch Error:", error);
-      setIsError(true); // নেটওয়ার্ক এরর হলে এরর স্টেট ট্রু হবে (মিথ্যা 'No data' দেখাবে না)
+    } catch (err) {
+      console.error("❌ Gallery Fetch Error:", err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ const GalleryPage = () => {
       </header>
 
       <main className="flex-grow max-w-7xl mx-auto px-4 py-16 w-full">
-        {/* ১. লোডিং স্টেট */}
+        {/* Loading State */}
         {loading ? (
           <div className="flex flex-col justify-center items-center h-96 gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-blue-700" />
@@ -57,8 +57,8 @@ const GalleryPage = () => {
               Processing Visuals...
             </p>
           </div>
-        ) : isError ? (
-          /* ২. নেটওয়ার্ক বা সার্ভার স্লিপ এরর স্টেট (যা এতদিন No Data Found দেখাচ্ছিল) */
+        ) : error ? (
+          /* Error State */
           <div className="text-center py-32">
             <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
               <RefreshCw className="w-10 h-10 text-red-500" />
@@ -77,7 +77,7 @@ const GalleryPage = () => {
             </button>
           </div>
         ) : items.length > 0 ? (
-          /* ৩. ডাটা পাওয়ার পর গ্যালারি গ্রিড */
+          /* Gallery Grid */
           <>
             <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
               {items.map((item) => (
@@ -139,7 +139,7 @@ const GalleryPage = () => {
             )}
           </>
         ) : (
-          /* ৪. ডাটাবেসে সত্যিই কোনো ছবি না থাকলে কেবল এটি দেখাবে */
+          /* Empty State */
           <div className="text-center py-32">
             <div className="bg-blue-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
               <ImageIcon className="w-10 h-10 text-blue-200" />

@@ -1,8 +1,9 @@
 /**
- * src/Pages/Blogs.jsx - THE PUBLIC VIEW (ULTIMATE VERSION)
+ * src/Pages/Blogs.jsx - THE PUBLIC VIEW (ENHANCED VERSION)
  * 1. 0% Reliance on defaultBlogs.
  * 2. Elegant Loading & Empty States.
- * 3. Responsive Grid with Safe Data Mapping.
+ * 3. Error State with Retry Capability.
+ * 4. Responsive Grid with Safe Data Mapping.
  */
 
 import React, { useState, useEffect } from "react";
@@ -10,25 +11,29 @@ import { Link } from "react-router-dom";
 import { getBlogs } from "../lib/cms";
 import Nav from "../Header/Nav";
 import Footer from "../Footer/Footer";
-import { Loader2, BookOpen, Calendar, User } from "lucide-react";
+import { Loader2, BookOpen, Calendar, User, RefreshCw } from "lucide-react";
 
 const Blogs = () => {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchBlogs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getBlogs();
+      setBlogs(data || []);
+    } catch (err) {
+      console.error("❌ Blogs Fetch Error:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const fetchBlogs = async () => {
-      try {
-        setLoading(true);
-        const data = await getBlogs();
-        setBlogs(data || []);
-      } catch (error) {
-        console.error("❌ Blogs Fetch Error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchBlogs();
   }, []);
 
@@ -56,6 +61,20 @@ const Blogs = () => {
           <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="w-12 h-12 animate-spin text-blue-900" />
             <p className="text-gray-500 font-bold animate-pulse uppercase tracking-widest text-xs">Accessing Archives...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-24 bg-white rounded-[40px] shadow-inner border-2 border-dashed border-red-100">
+            <div className="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <RefreshCw className="w-10 h-10 text-red-500" />
+            </div>
+            <h3 className="text-2xl font-black text-gray-800">Server is waking up...</h3>
+            <p className="text-gray-400 mt-3 font-medium mb-8">Network or server error. Please try again.</p>
+            <button
+              onClick={fetchBlogs}
+              className="bg-blue-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg"
+            >
+              Retry Loading
+            </button>
           </div>
         ) : blogs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
