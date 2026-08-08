@@ -1,5 +1,5 @@
 /**
- * server/index.js - Dr. Ariful CMS Backend
+ * server/index.js - Dr. Arifur CMS Backend
  * Client MongoDB Database Integration
  */
 
@@ -273,7 +273,7 @@ app.delete("/api/projects/:id", asyncHandler(async (req, res) => {
 }));
 
 // Root
-app.get("/", (req, res) => res.json({ message: "Dr. Ariful CMS API - Client Database" }));
+app.get("/", (req, res) => res.json({ message: "Dr. Arifur CMS API - Client Database" }));
 
 // Global Error Handler Middleware
 app.use((err, req, res, next) => {

@@ -1,4 +1,4 @@
-# Dr. Ariful Rahman Portfolio & CMS
+# Dr. Arifur Rahman Portfolio & CMS
 
 A modern professional portfolio website for Dr. Ariful Rahman, built with React, Vite, Tailwind CSS, and a MongoDB-backed CMS API. The project includes a public portfolio site, a CMS/admin dashboard, blog management, gallery management, and research project management.
 
@@ -247,7 +247,7 @@ For detailed technical documentation, deployment guides, and architecture inform
 
 ## License
 
-This project is intended for personal/professional portfolio use by Dr. DM Ariful Rahman.
+This project is intended for personal/professional portfolio use by Dr. DM Arifur Rahman.
 
 ---
 

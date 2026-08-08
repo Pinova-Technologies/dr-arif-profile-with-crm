@@ -1,4 +1,4 @@
-# Dr. Ariful Rahman Portfolio & CMS — Agent Guide
+# Dr. Arifur Rahman Portfolio & CMS — Agent Guide
 
 ## Two independent Node projects (no monorepo tool)
 - Root `package.json` — React frontend (Vite 5 + React 18 + Tailwind CSS 3 + daisyUI 5)

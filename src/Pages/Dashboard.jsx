@@ -131,7 +131,7 @@ export default function Dashboard() {
       if (modalType === "blog") {
         savedDoc = editingItem 
           ? await updateBlog(editingItem.id, formData)
-          : await addBlog({ ...formData, author: "Dr. DM Ariful Rahman", date: new Date().toISOString().split('T')[0] });
+          : await addBlog({ ...formData, author: "Dr. DM Arifur Rahman", date: new Date().toISOString().split('T')[0] });
         setBlogs(prev => editingItem ? prev.map(i => i.id === savedDoc.id ? savedDoc : i) : [savedDoc, ...prev]);
       } 
       else if (modalType === "project") {
